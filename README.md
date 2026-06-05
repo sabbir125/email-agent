@@ -2,46 +2,65 @@
 
 An AI-powered email monitoring agent that reads emails, classifies them using OpenAI, and displays a live dashboard. Supports both a mock JSON source (for testing) and Gmail via IMAP.
 
+---
+
 ## Features
 
 - Reads emails from Gmail (IMAP) or a local mock JSON file
 - Classifies emails with OpenAI into categories: `PAYMENT_ISSUE`, `SERVER_DOWN`, `CUSTOMER_COMPLAINT`, `ACCOUNT_ACCESS`, `GENERAL_SUPPORT`, `NEWSLETTER`, `SPAM`
 - Assigns a priority (`HIGH`, `MEDIUM`, `LOW`) and importance flag
 - Persists results to **PostgreSQL** (local Docker or Neon cloud)
-- Live dashboard at `/` with real-time polling and toast notifications
+- Live dashboard at `/` with real-time polling, filter tabs, and toast notifications
 - REST API endpoints for emails and stats
 - Background scheduler that polls for new emails on a configurable interval
 - Serverless-aware: skips the background scheduler when `VERCEL=1` is set
 
+---
+
 ## Tech Stack
 
-- **FastAPI**: web framework & REST API
-- **APScheduler**: background email polling
-- **SQLAlchemy + psycopg2**: ORM with PostgreSQL
-- **OpenAI API**: email classification (`gpt-4.1-mini` by default)
-- **Jinja2 + Tailwind CSS**: dashboard UI
-- **Docker + PostgreSQL 16**: containerized deployment
+| Layer | Technology |
+|---|---|
+| Web framework & API | FastAPI |
+| Background scheduling | APScheduler |
+| ORM & database driver | SQLAlchemy + psycopg2 |
+| AI classification | OpenAI API (`gpt-4.1-mini` by default) |
+| Dashboard UI | Jinja2 + Tailwind CSS |
+| Database | PostgreSQL 16 |
+| Containerisation | Docker + Docker Compose |
+
+---
 
 ## Project Structure
 
 ```
 email-agent/
 ├── app/
-│   ├── api/            # FastAPI route handlers
-│   ├── database/       # SQLAlchemy models and session management
-│   ├── schemas/        # Pydantic schemas
-│   ├── services/       # Email reader, classifier, scheduler
-│   ├── static/         # Static assets
-│   ├── templates/      # Jinja2 HTML templates
-│   ├── config.py       # Settings loaded from environment
-│   └── main.py         # App entry point and lifespan
+│   ├── api/
+│   │   └── emails.py        # GET /emails, /emails/important, /stats
+│   ├── database/
+│   │   ├── db.py            # SQLAlchemy engine, session factory, init_db()
+│   │   └── models.py        # Email ORM model
+│   ├── schemas/
+│   │   └── email.py         # Pydantic schemas: RawEmail, ClassificationResult, EmailResponse
+│   ├── services/
+│   │   ├── classifier.py    # OpenAI classification logic
+│   │   ├── email_reader.py  # Mock loader + Gmail IMAP reader
+│   │   └── scheduler.py     # Dedup, classify, and persist loop
+│   ├── static/              # Static assets (currently empty placeholder)
+│   ├── templates/
+│   │   └── dashboard.html   # Jinja2 + Tailwind dashboard
+│   ├── config.py            # Pydantic settings loaded from environment
+│   └── main.py              # FastAPI app, lifespan, scheduler bootstrap
 ├── mock_data/
-│   └── emails.json     # Sample emails for mock mode
-├── .env.example        # Environment variable template
+│   └── emails.json          # Sample emails for mock mode
+├── .env.example             # Environment variable template
 ├── Dockerfile
 ├── docker-compose.yml
 └── requirements.txt
 ```
+
+---
 
 ## Setup
 
@@ -81,6 +100,8 @@ GMAIL_FOLDER=INBOX
 
 > For Gmail, enable IMAP and generate an [App Password](https://support.google.com/accounts/answer/185833).
 
+---
+
 ### 2. Run with Docker (recommended)
 
 ```bash
@@ -101,7 +122,7 @@ You need a running PostgreSQL instance. The quickest way is to start just the da
 docker compose up db -d
 ```
 
-Then run the app:
+Then install dependencies and start the app:
 
 ```bash
 python -m venv venv
@@ -112,7 +133,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Make sure `DATABASE_URL` in your `.env` points to your local Postgres instance.
+Make sure `DATABASE_URL` in your `.env` points to your local Postgres instance. Tables are created automatically on first startup via `init_db()`.
 
 ### 4. Using Neon (serverless Postgres)
 
@@ -122,43 +143,148 @@ Create a free database at [neon.tech](https://neon.tech) and set `DATABASE_URL` 
 DATABASE_URL=postgresql+psycopg2://user:pass@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
 ```
 
-Tables are created automatically on first startup via `init_db()`.
+---
+
+## AI Classification Logic
+
+Email classification is handled in `app/services/classifier.py` using the OpenAI Chat Completions API.
+
+### How it works
+
+1. **Prompt construction** — The classifier builds a user prompt containing the sender address, subject, and body. A fixed system prompt instructs the model to respond with a strict JSON object and nothing else.
+
+2. **Model call** — The request is sent to the configured model (default: `gpt-4.1-mini`) with `temperature=0.1` to keep outputs deterministic, and `max_tokens=256` since the response is small and structured.
+
+3. **Response parsing** — The raw response is stripped of any accidental markdown fencing (` ``` `) before being parsed as JSON and validated against the `ClassificationResult` Pydantic schema.
+
+4. **Failure handling** — Any `JSONDecodeError`, `OpenAIError`, or unexpected exception returns `None`. The scheduler logs the failure and skips persisting that email, so a single bad response never blocks the rest of the batch.
+
+### Output schema
+
+```json
+{
+  "important": true,
+  "priority": "HIGH",
+  "category": "SERVER_DOWN",
+  "confidence": 94,
+  "reason": "Email reports a production outage affecting all users."
+}
+```
+
+### Classification categories
+
+| Category | Description |
+|---|---|
+| `PAYMENT_ISSUE` | Payment failures or billing problems |
+| `SERVER_DOWN` | Infrastructure or outage alerts |
+| `CUSTOMER_COMPLAINT` | Customer dissatisfaction |
+| `ACCOUNT_ACCESS` | Login issues or security alerts |
+| `GENERAL_SUPPORT` | General support requests |
+| `NEWSLETTER` | Marketing and newsletters |
+| `SPAM` | Spam or irrelevant emails |
+
+### Priority and importance rules
+
+The model determines both `priority` and `important` independently based on content. In practice:
+- `SERVER_DOWN` and `PAYMENT_ISSUE` typically resolve to `HIGH` priority and `important: true`
+- `NEWSLETTER` and `SPAM` typically resolve to `LOW` priority and `important: false`
+- The `confidence` field (0–100) reflects the model's self-reported certainty
+
+---
+
+## Dashboard
+
+The dashboard is served at `http://localhost:8000/` and rendered server-side via Jinja2 on first load. After that, the page updates itself every **30 seconds** by polling the REST API — no page reload required.
+
+### Stats bar
+
+Three cards at the top show live counts: **Total Processed**, **Important**, and **Ignored**. These update on every poll cycle.
+
+### Filter tabs
+
+- **Important** (default) — shows only emails where `important = true`, ordered by received date descending
+- **All Emails** — shows the full inbox regardless of importance flag
+
+### Email cards
+
+Each card displays:
+- Priority badge (colour-coded: red = HIGH, amber = MEDIUM, green = LOW)
+- Category tag
+- Subject and sender
+- AI-generated reason for the classification
+- Received timestamp and confidence percentage
+- A pulsing **NEW** badge for emails that arrived after the page was loaded
+
+### Toast notifications
+
+When the poller detects an email that wasn't present on the previous fetch, a slide-in toast appears in the bottom-right corner for 5 seconds. This fires only for important emails, regardless of which filter tab is active.
+
+### Bell badge
+
+The notification bell in the header tracks unread important email count. The count persists across page reloads via `localStorage` and is cleared by clicking the bell.
+
+---
 
 ## API Endpoints
 
-| Method | Endpoint             | Description                        |
-|--------|----------------------|------------------------------------|
-| GET    | `/`                  | Dashboard (HTML)                   |
-| GET    | `/emails`            | All processed emails (JSON)        |
-| GET    | `/emails/important`  | Important emails only (JSON)       |
-| GET    | `/stats`             | Email processing stats (JSON)      |
-| GET    | `/health`            | Health check                       |
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/` | Dashboard (HTML) |
+| `GET` | `/emails` | All processed emails (JSON) |
+| `GET` | `/emails/important` | Important emails only (JSON) |
+| `GET` | `/stats` | Email processing stats (JSON) |
+| `GET` | `/health` | Health check |
 
-## Email Categories
+Interactive docs are available at `/docs` (Swagger UI) and `/redoc`.
 
-| Category             | Description                          |
-|----------------------|--------------------------------------|
-| `PAYMENT_ISSUE`      | Payment failures or billing problems |
-| `SERVER_DOWN`        | Infrastructure or outage alerts      |
-| `CUSTOMER_COMPLAINT` | Customer dissatisfaction             |
-| `ACCOUNT_ACCESS`     | Login issues or security alerts      |
-| `GENERAL_SUPPORT`    | General support requests             |
-| `NEWSLETTER`         | Marketing and newsletters            |
-| `SPAM`               | Spam or irrelevant emails            |
+---
 
 ## Configuration Reference
 
-| Variable                    | Default                                              | Description                                      |
-|-----------------------------|------------------------------------------------------|--------------------------------------------------|
-| `OPENAI_API_KEY`            | *(required)*                                         | Your OpenAI API key                              |
-| `DATABASE_URL`              | *(required)*                                         | PostgreSQL connection string (psycopg2 format)   |
-| `SCHEDULER_INTERVAL_MINUTES`| `2`                                                  | How often to poll for new emails                 |
-| `OPENAI_MODEL`              | `gpt-4.1-mini`                                       | OpenAI model for classification                  |
-| `OPENAI_TIMEOUT`            | `30`                                                 | OpenAI request timeout in seconds                |
-| `EMAIL_SOURCE`              | `mock`                                               | `mock` or `gmail`                                |
-| `MOCK_DATA_PATH`            | `mock_data/emails.json`                              | Path to mock email data                          |
-| `GMAIL_USER`                | —                                                    | Gmail address (for `gmail` source)               |
-| `GMAIL_APP_PASSWORD`        | —                                                    | Gmail App Password (for `gmail` source)          |
-| `GMAIL_MAX_EMAILS`          | `20`                                                 | Max emails to fetch per poll                     |
-| `GMAIL_FOLDER`              | `INBOX`                                              | IMAP folder(s) to watch                          |
-| `VERCEL`                    | —                                                    | Set to `1` to disable background scheduler       |
+| Variable | Default | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | *(required)* | Your OpenAI API key |
+| `DATABASE_URL` | *(required)* | PostgreSQL connection string (psycopg2 format) |
+| `SCHEDULER_INTERVAL_MINUTES` | `2` | How often to poll for new emails |
+| `OPENAI_MODEL` | `gpt-4.1-mini` | OpenAI model used for classification |
+| `OPENAI_TIMEOUT` | `30` | OpenAI request timeout in seconds |
+| `EMAIL_SOURCE` | `mock` | `mock` or `gmail` |
+| `MOCK_DATA_PATH` | `mock_data/emails.json` | Path to mock email data file |
+| `GMAIL_USER` | — | Gmail address (required for `gmail` source) |
+| `GMAIL_APP_PASSWORD` | — | Gmail App Password (required for `gmail` source) |
+| `GMAIL_MAX_EMAILS` | `20` | Max emails to fetch per folder per poll |
+| `GMAIL_FOLDER` | `INBOX` | Comma-separated IMAP folder(s) to watch |
+| `VERCEL` | — | Set to `1` to disable the background scheduler |
+
+---
+
+## Limitations
+
+**AI classification accuracy**
+- The model classifies based on subject and body text only. Emails with vague subjects and minimal bodies may be miscategorised or receive low confidence scores.
+- `gpt-4.1-mini` is fast and cheap but less capable than larger models. Edge cases (e.g. multi-topic emails, non-English content) may not classify correctly.
+- The `important` flag and `priority` are fully determined by the model. There is no rule-based fallback, so prompt injection in email bodies could potentially influence results.
+
+**Gmail / IMAP**
+- Only the `n` most recent emails per folder are fetched each poll cycle (`GMAIL_MAX_EMAILS`). Older emails that arrive out of order may be missed.
+- The persistent IMAP connection can drop silently on long idle periods. The reader reconnects automatically on the next poll, but one poll cycle may be skipped.
+- Gmail App Passwords require 2-Step Verification to be enabled on the account.
+- OAuth2 is not supported — only App Password authentication.
+
+**Deduplication**
+- Emails are deduplicated by `Message-ID` header. If a mail server sends the same email with different Message-IDs (e.g. forwarding rules or server-side redelivery), duplicates will be stored.
+- Mock mode re-reads the same JSON file on every poll. Emails already in the database are skipped by the duplicate check, but adding new entries to `emails.json` while the app is running will cause them to be picked up on the next cycle.
+
+**Scalability**
+- The scheduler runs in-process using APScheduler. Under heavy load or with large mailboxes, the classification loop (one OpenAI call per new email) will slow down proportionally to the number of unprocessed emails.
+- There is no rate-limit handling for the OpenAI API. Hitting token or request-per-minute limits will cause individual emails to fail classification silently.
+- PostgreSQL is the only supported database. SQLite is not tested.
+
+**Dashboard**
+- The dashboard polls every 30 seconds. There is no WebSocket or server-sent event push, so notifications can lag up to 30 seconds behind real-time.
+- The bell badge unread count is stored in `localStorage` per browser. It is not synced across devices or browser profiles.
+- No authentication or access control is implemented. Anyone with network access to port 8000 can view all emails and stats.
+
+**Deployment**
+- Running on Vercel (or any platform that sets `VERCEL=1`) disables the background scheduler. Email processing will only happen on the initial startup request, not on a recurring schedule.
+- The Docker image runs as root by default. For production deployments, add a non-root user to the Dockerfile.
