@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -22,8 +23,12 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# APScheduler instance
+# APScheduler instance — not used on serverless platforms (Vercel)
 scheduler = BackgroundScheduler()
+
+# Vercel serverless functions have no persistent process, so background
+# scheduling is skipped. Set VERCEL=1 in your Vercel environment variables.
+IS_SERVERLESS = bool(os.environ.get("VERCEL"))
 
 
 @asynccontextmanager
@@ -32,24 +37,28 @@ async def lifespan(app: FastAPI):
     logger.info("Initializing database...")
     init_db()
 
-    logger.info("Starting scheduler...")
-    scheduler.add_job(
-        process_emails,
-        "interval",
-        minutes=settings.SCHEDULER_INTERVAL_MINUTES,
-        id="email_processor",
-        replace_existing=True,
-    )
-    scheduler.start()
+    if IS_SERVERLESS:
+        logger.info("Serverless environment — skipping background scheduler.")
+    else:
+        logger.info("Starting scheduler...")
+        scheduler.add_job(
+            process_emails,
+            "interval",
+            minutes=settings.SCHEDULER_INTERVAL_MINUTES,
+            id="email_processor",
+            replace_existing=True,
+        )
+        scheduler.start()
 
     logger.info("Running initial email processing...")
     process_emails()
 
     yield
 
-    logger.info("Shutting down scheduler...")
-    scheduler.shutdown(wait=False)
-    close_imap_connection()
+    if not IS_SERVERLESS:
+        logger.info("Shutting down scheduler...")
+        scheduler.shutdown(wait=False)
+        close_imap_connection()
     logger.info("Application shutdown complete.")
 
 

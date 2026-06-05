@@ -7,7 +7,10 @@ class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
 
     OPENAI_API_KEY: str
-    DATABASE_URL: str = "sqlite:///./data/emails.db"
+    # PostgreSQL connection string
+    # Format: postgresql+psycopg2://user:password@host:5432/dbname
+    # For Neon: postgresql+psycopg2://user:pass@ep-xxx.region.aws.neon.tech/dbname?sslmode=require
+    DATABASE_URL: str
     SCHEDULER_INTERVAL_MINUTES: int = 2
     OPENAI_MODEL: str = "gpt-4.1-mini"
     OPENAI_TIMEOUT: int = 30
