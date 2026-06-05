@@ -1,0 +1,132 @@
+[
+  {
+    "id": "1",
+    "from": "customer@example.com",
+    "subject": "Payment failed",
+    "body": "I cannot complete my payment. I've tried multiple times but keep getting an error at checkout.",
+    "received_at": "2026-06-01T12:00:00Z"
+  },
+  {
+    "id": "2",
+    "from": "ops@company.com",
+    "subject": "Server downtime alert",
+    "body": "Production server us-east-1 is experiencing critical downtime. All services affected.",
+    "received_at": "2026-06-01T12:05:00Z"
+  },
+  {
+    "id": "3",
+    "from": "angry.user@gmail.com",
+    "subject": "Terrible service!",
+    "body": "I've been waiting 3 days for a response. This is unacceptable customer service.",
+    "received_at": "2026-06-01T12:10:00Z"
+  },
+  {
+    "id": "4",
+    "from": "user42@domain.com",
+    "subject": "Cannot login to my account",
+    "body": "I reset my password but still cannot access my account. Please help urgently.",
+    "received_at": "2026-06-01T12:15:00Z"
+  },
+  {
+    "id": "5",
+    "from": "support@helpdesk.io",
+    "subject": "How to export data?",
+    "body": "Hi, could you guide me on how to export my data from the platform to CSV?",
+    "received_at": "2026-06-01T12:20:00Z"
+  },
+  {
+    "id": "6",
+    "from": "newsletter@techdigest.com",
+    "subject": "Weekly Tech Roundup - June 2026",
+    "body": "Here are the top tech stories this week: AI breakthroughs, new frameworks, and more.",
+    "received_at": "2026-06-01T12:25:00Z"
+  },
+  {
+    "id": "7",
+    "from": "promo@randomshop.xyz",
+    "subject": "YOU WON $1,000,000!!!",
+    "body": "Click here to claim your prize now! Limited time offer. Act fast!",
+    "received_at": "2026-06-01T12:30:00Z"
+  },
+  {
+    "id": "8",
+    "from": "finance@bigcorp.com",
+    "subject": "Invoice payment overdue",
+    "body": "Your invoice #4521 is 15 days overdue. Please process payment immediately to avoid service interruption.",
+    "received_at": "2026-06-01T12:35:00Z"
+  },
+  {
+    "id": "9",
+    "from": "customer@startup.com",
+    "subject": "Refund request for recent purchase",
+    "body": "I would like to request a refund for my recent purchase due to unexpected charges.",
+    "received_at": "2026-06-01T15:00:00Z"
+  },
+  {
+    "id": "10",
+    "from": "hr@partner.com",
+    "subject": "Meeting reminder",
+    "body": "This is a reminder about our scheduled partnership discussion tomorrow at 10 AM.",
+    "received_at": "2026-06-01T15:20:00Z"
+  },{
+    "id": "11",
+    "from": "winner@free-gifts.net",
+    "subject": "Congratulations! You've won $10,000",
+    "body": "Click the link below immediately to claim your prize before it expires.",
+    "received_at": "2026-06-01T15:45:00Z"
+  },
+  {
+    "id": "12",
+    "from": "ceo@clientcompany.com",
+    "subject": "URGENT: Production system outage",
+    "body": "Our customers are unable to place orders due to a production outage. This is impacting revenue and requires immediate attention.",
+    "received_at": "2026-06-01T16:00:00Z"
+  },
+  {
+    "id": "13",
+    "from": "cto@enterpriseclient.com",
+    "subject": "Critical API outage affecting integrations",
+    "body": "Our production systems can no longer communicate with your API. Multiple business processes are blocked and require immediate resolution.",
+    "received_at": "2026-06-01T17:00:00Z"
+  },
+   {
+    "id": "14",
+    "from": "customer@premiumclient.com",
+    "subject": "Account locked before important deadline",
+    "body": "My account has been locked and I need access immediately to complete a client deliverable due today.",
+    "received_at": "2026-06-01T16:20:00Z"
+  },
+  {
+    "id": "15",
+    "from": "operations@company.com",
+    "subject": "Security incident detected",
+    "body": "Multiple unauthorized login attempts have been detected on administrative accounts. Please review immediately.",
+    "received_at": "2026-06-01T16:30:00Z"
+  },{
+    "id": "16",
+    "from": "customer@business.com",
+    "subject": "Formal complaint regarding service disruption",
+    "body": "Our team has been unable to use your platform for the past two days. We require urgent assistance and a resolution timeline.",
+    "received_at": "2026-06-01T16:40:00Z"
+  },
+  {
+    "id": "17",
+    "from": "cto@enterpriseclient.com",
+    "subject": "Critical API outage affecting integrations",
+    "body": "Our production systems can no longer communicate with your API. Multiple business processes are blocked and require immediate resolution.",
+    "received_at": "2026-06-01T17:00:00Z"
+  },
+  {
+    "id": "18",
+    "from": "security@bankingpartner.com",
+    "subject": "Suspicious activity detected on customer accounts",
+    "body": "We have identified unusual activity affecting several customer accounts. Please investigate immediately and provide an update.",
+    "received_at": "2026-06-01T17:10:00Z"
+  },{
+    "id": "19",
+    "from": "support@majorclient.com",
+    "subject": "Unable to access production environment",
+    "body": "Our entire operations team has lost access to the production environment. This issue is disrupting critical business activities.",
+    "received_at": "2026-06-01T17:20:00Z"
+  }
+]
