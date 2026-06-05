@@ -17,8 +17,8 @@ COPY app/ ./app/
 COPY mock_data/ ./mock_data/
 
 # Create a non-root user for security
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
-RUN mkdir -p /app/data && chown -R appuser:appgroup /app
+RUN groupadd --system appgroup && useradd --system --gid appgroup appuser \
+    && mkdir -p /app/data && chown -R appuser:appgroup /app
 USER appuser
 
 # Expose port
