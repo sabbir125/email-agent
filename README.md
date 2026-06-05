@@ -14,12 +14,12 @@ An AI-powered email monitoring agent that reads emails, classifies them using Op
 
 ## Tech Stack
 
-- **FastAPI** — web framework & REST API
-- **APScheduler** — background email polling
-- **SQLAlchemy** — ORM with SQLite
-- **OpenAI API** — email classification (`gpt-4.1-mini` by default)
-- **Jinja2 + Tailwind CSS** — dashboard UI
-- **Docker** — containerized deployment
+- **FastAPI**: web framework & REST API
+- **APScheduler**: background email polling
+- **SQLAlchemy**: ORM with SQLite
+- **OpenAI API**: email classification (`gpt-4.1-mini` by default)
+- **Jinja2 + Tailwind CSS**: dashboard UI
+- **Docker**: containerized deployment
 
 ## Project Structure
 
