@@ -260,31 +260,7 @@ Interactive docs are available at `/docs` (Swagger UI) and `/redoc`.
 
 ## Limitations
 
-**AI classification accuracy**
-- The model classifies based on subject and body text only. Emails with vague subjects and minimal bodies may be miscategorised or receive low confidence scores.
-- `gpt-4.1-mini` is fast and cheap but less capable than larger models. Edge cases (e.g. multi-topic emails, non-English content) may not classify correctly.
-- The `important` flag and `priority` are fully determined by the model. There is no rule-based fallback, so prompt injection in email bodies could potentially influence results.
-
-**Gmail / IMAP**
-- Only the `n` most recent emails per folder are fetched each poll cycle (`GMAIL_MAX_EMAILS`). Older emails that arrive out of order may be missed.
-- The persistent IMAP connection can drop silently on long idle periods. The reader reconnects automatically on the next poll, but one poll cycle may be skipped.
-- Gmail App Passwords require 2-Step Verification to be enabled on the account.
-- OAuth2 is not supported — only App Password authentication.
-
-**Deduplication**
-- Emails are deduplicated by `Message-ID` header. If a mail server sends the same email with different Message-IDs (e.g. forwarding rules or server-side redelivery), duplicates will be stored.
-- Mock mode re-reads the same JSON file on every poll. Emails already in the database are skipped by the duplicate check, but adding new entries to `emails.json` while the app is running will cause them to be picked up on the next cycle.
-
-**Scalability**
-- The scheduler runs in-process using APScheduler. Under heavy load or with large mailboxes, the classification loop (one OpenAI call per new email) will slow down proportionally to the number of unprocessed emails.
-- There is no rate-limit handling for the OpenAI API. Hitting token or request-per-minute limits will cause individual emails to fail classification silently.
-- PostgreSQL is the only supported database. SQLite is not tested.
-
-**Dashboard**
-- The dashboard polls every 30 seconds. There is no WebSocket or server-sent event push, so notifications can lag up to 30 seconds behind real-time.
-- The bell badge unread count is stored in `localStorage` per browser. It is not synced across devices or browser profiles.
-- No authentication or access control is implemented. Anyone with network access to port 8000 can view all emails and stats.
-
-**Deployment**
-- Running on Vercel (or any platform that sets `VERCEL=1`) disables the background scheduler. Email processing will only happen on the initial startup request, not on a recurring schedule.
-- The Docker image runs as root by default. For production deployments, add a non-root user to the Dockerfile.
+- Classification is based on subject and body text only. Emails with vague or minimal content may receive low confidence scores or be miscategorised.
+- `gpt-4.1-mini` handles the majority of cases well, but ambiguous or non-English emails may not classify correctly. Swapping to a larger model via `OPENAI_MODEL` will improve accuracy.
+- Deduplication relies on the `Message-ID` header. Emails redelivered by a mail server with a different `Message-ID` (e.g. via certain forwarding rules) could be stored twice.
+- In mock mode, the same `emails.json` file is read on every poll cycle. Already-processed emails are skipped by the duplicate check, so this has no visible effect unless you add new entries to the file.
