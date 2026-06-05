@@ -151,13 +151,13 @@ Email classification is handled in `app/services/classifier.py` using the OpenAI
 
 ### How it works
 
-1. **Prompt construction** — The classifier builds a user prompt containing the sender address, subject, and body. A fixed system prompt instructs the model to respond with a strict JSON object and nothing else.
+1. **Prompt construction** - The classifier builds a user prompt containing the sender address, subject, and body. A fixed system prompt instructs the model to respond with a strict JSON object and nothing else.
 
-2. **Model call** — The request is sent to the configured model (default: `gpt-4.1-mini`) with `temperature=0.1` to keep outputs deterministic, and `max_tokens=256` since the response is small and structured.
+2. **Model call** - The request is sent to the configured model (default: `gpt-4.1-mini`) with `temperature=0.1` to keep outputs deterministic, and `max_tokens=256` since the response is small and structured.
 
-3. **Response parsing** — The raw response is stripped of any accidental markdown fencing (` ``` `) before being parsed as JSON and validated against the `ClassificationResult` Pydantic schema.
+3. **Response parsing** - The raw response is stripped of any accidental markdown fencing (` ``` `) before being parsed as JSON and validated against the `ClassificationResult` Pydantic schema.
 
-4. **Failure handling** — Any `JSONDecodeError`, `OpenAIError`, or unexpected exception returns `None`. The scheduler logs the failure and skips persisting that email, so a single bad response never blocks the rest of the batch.
+4. **Failure handling** - Any `JSONDecodeError`, `OpenAIError`, or unexpected exception returns `None`. The scheduler logs the failure and skips persisting that email, so a single bad response never blocks the rest of the batch.
 
 ### Output schema
 
